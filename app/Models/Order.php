@@ -15,6 +15,7 @@ class Order extends Model
         'city',
         'address',
         'product_id',
+        'status',
         'color',
         'quantity',
     ];

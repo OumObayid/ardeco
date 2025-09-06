@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+
     <title>@yield('title', 'L’Atelier Déco')</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -18,7 +20,7 @@
             --color-text-main: #f1f1f1;
             --color-text-muted: #bbb;
             --color-accent: #e3c34e;
-            --color-accent-hover: #b28211;
+            --color-accent-hover: #ddac38ff;
 
             --font-main: 'Segoe UI', sans-serif;
         }
@@ -29,6 +31,10 @@
             background-color: var(--color-bg-main);
             font-family: var(--font-main);
             color: var(--color-text-main);
+        }
+
+        a {
+            text-decoration: none;
         }
 
         /* #global-loader {
@@ -52,7 +58,7 @@
         }
 
         .navbar {
-            background-color: var(--color-navbar);
+            background-color: var(--color-navbar) !important;
             border-bottom: 1px solid var(--color-accent)
         }
 
@@ -70,7 +76,7 @@
         }
 
         .nav-link:hover {
-            color: #fff !important;
+            color: var(--color-accent) !important;
         }
 
         .banner {
@@ -83,7 +89,7 @@
         }
 
         .banner-overlay {
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.28);
             position: absolute;
             top: 0;
             left: 0;
@@ -137,7 +143,7 @@
             background-color: var(--color-navbar);
             color: var(--color-text-muted);
             padding: 40px 0;
-            margin-top: 5rem;
+
         }
 
         footer a {
@@ -150,71 +156,118 @@
         }
 
         footer h5 {
+            color: var(--color-accent);
+        }
+
+        .pagination .page-link {
+            color: #000000ff;
+            /* couleur des liens */
+            border-color: #000000ff;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: #000000ff;
+            /* fond de l'élément actif */
+            border-color: #000000ff;
             color: #fff;
         }
-    </style>
 
+        /* Supprimer toute bordure */
+        .navbar-toggler.custom-toggler {
+            border: none;
+        }
+
+        .navbar-toggler.custom-toggler .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='%23e3c34e' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E") !important;
+        }
+
+        .text-muted {
+            display: none;
+        }
+    </style>
+    @stack('styles')
 </head>
 
 <body>
     <nav class="navbar-expand-lg text-center">
-        <div class="container">
+        <div class="container d-none d-md-block">
             <a class="navbar-brand michromaTitle" href="{{ route('home') }}">L’Atelier Déco</a>
         </div>
     </nav>
-    <nav class="navbar navbar-expand-lg ">
-        <div class="container">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="{{ route('home') }}">Accueil</a></li>
 
-                @foreach ($categories as $category)
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('category.show', $category->id) }}">
-                            {{ $category->name }}
-                        </a>
-                    </li>
-                @endforeach
+    <nav class="navbar navbar-expand-lg">
+        <div class="container d-flex justify-content-between">
+            {{-- Logo visible uniquement en mobile --}}
+            <a class="navbar-brand michromaTitle d-block d-md-none fs-2" href="{{ route('home') }}">L’Atelier Déco</a>
 
-                {{-- @guest
+            {{-- Bouton burger pour mobile --}}
+            <button class="navbar-toggler custom-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+
+            {{-- Liens du menu --}}
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto"> {{-- centrage du menu --}}
+                    <li class="nav-item"><a class="nav-link" href="{{ route('home') }}">Accueil</a></li>
+
+                    @foreach ($categories as $category)
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('categories.show', $category->id) }}">
+                                {{ $category->name }}
+                            </a>
+                        </li>
+                    @endforeach
+
+                    {{--
+                    @guest
                     <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Connexion</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('register') }}">Inscription</a></li>
-                @else                    
+                    @else
                     <li class="nav-item">
                         <form action="{{ route('logout') }}" method="POST">
                             @csrf
                             <button class="btn btn-link nav-link" type="submit">Déconnexion</button>
                         </form>
                     </li>
-                @endguest --}}
-            </ul>
-
+                    @endguest
+                    --}}
+                </ul>
+            </div>
         </div>
     </nav>
+
+
 
     <main class="flex-grow-1">
         @yield('content')
     </main>
-    <footer>
+    <footer class="mt-md-5">
         <div class="container">
-            <div class="row">
+            <div class="row d-flex justify-content-between">
                 <div class="col-md-4 mb-4">
-                    <h5>L’Atelier Déco</h5>
-                    <p>Décoration artisanale moderne pour un intérieur unique.</p>
+                    <h5 class="text-center" class="text-center">L’Atelier Déco</h5>
+                    <p class="text-center lh-lg">Décoration artisanale moderne
+                        Pour un intérieur élégant et unique
+                        Alliant savoir-faire et créativité
+                        Chaque pièce raconte une histoire personnelle</p>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <h5>Navigation</h5>
+                    <h5 class="text-center">Navigation</h5>
                     <ul class="list-unstyled">
-                        <li><a href="{{ route('home') }}">Accueil</a></li>
-                        <li><a href="#produits">Produits</a></li>
-                        <li><a href="{{ route('login') }}">Connexion</a></li>
-                        <li><a href="{{ route('register') }}">Inscription</a></li>
+                        <li class="text-center"><a href="{{ route('home') }}">Accueil</a></li>
+                        <li class="text-center"><a href="#produits">Produits</a></li>
+                        <li class="text-center"><a href="{{ route('login') }}">Connexion</a></li>
+                        <li class="text-center"><a href="{{ route('register') }}">Inscription</a></li>
                     </ul>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <h5>Contact</h5>
-                    <p>Email : contact@atelierdeco.com</p>
-                    <p>Téléphone : +212 6 12 34 56 78</p>
-                    <p>
+                    <h5 class="text-center">Contact</h5>
+                    <p class="text-center">Email : contact@atelierdeco.com</p>
+                    <p class="text-center">Téléphone : +212 6 12 34 56 78</p>
+                    <p class="text-center">
                         <a href="#"><i class="bi bi-facebook me-2"></i></a>
                         <a href="#"><i class="bi bi-instagram me-2"></i></a>
                         <a href="#"><i class="bi bi-twitter"></i></a>
@@ -222,20 +275,16 @@
                 </div>
             </div>
             <div class="text-center mt-4 border-top pt-3">
-                &copy; {{ date('Y') }} L’Atelier Déco. Tous droits réservés.
+                &copy; {{ date('Y') }} <span style="color:var(--color-accent)">L’Atelier Déco.</span> Tous droits
+                réservés.
             </div>
         </div>
     </footer>
 
-    {{-- <div id="global-loader" class="d-flex">
-        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Chargement...</span>
-        </div>
-    </div> --}}
+
     <div id="global-loader"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-     background-color: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; display: none; flex-direction: column;"
-        >
+     background-color: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; display: none; flex-direction: column;">
         <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
             <span class="visually-hidden">Chargement...</span>
         </div>
@@ -246,11 +295,11 @@
 
     <script>
         // Afficher le loader sur tous les formulaires
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             const loader = document.getElementById("global-loader");
 
             document.querySelectorAll("form").forEach(form => {
-                form.addEventListener("submit", function() {
+                form.addEventListener("submit", function () {
                     loader.style.display = "flex";
                 });
             });
@@ -263,36 +312,37 @@
             });
         });
     </script>
-{{-- <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const loader = document.getElementById("global-loader");
+    {{--
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const loader = document.getElementById("global-loader");
 
-        // ➤ Montrer le loader à la soumission d’un formulaire
-        document.querySelectorAll("form").forEach(form => {
-            form.addEventListener("submit", function () {
-                loader.style.display = "flex";
+            // ➤ Montrer le loader à la soumission d’un formulaire
+            document.querySelectorAll("form").forEach(form => {
+                form.addEventListener("submit", function () {
+                    loader.style.display = "flex";
 
-                // ➤ Si on reste sur la page (validation JS ou AJAX),
-                // on cache le loader après un délai de sécurité
-                setTimeout(() => {
-                    loader.style.display = "none";
-                }, 8000); // 8 secondes par exemple (à adapter)
+                    // ➤ Si on reste sur la page (validation JS ou AJAX),
+                    // on cache le loader après un délai de sécurité
+                    setTimeout(() => {
+                        loader.style.display = "none";
+                    }, 8000); // 8 secondes par exemple (à adapter)
+                });
+            });
+
+            // ➤ Pour les boutons avec data-loader (ex. suppression AJAX)
+            document.querySelectorAll('[data-loader]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    loader.style.display = "flex";
+
+                    // Cache aussi après un petit délai
+                    setTimeout(() => {
+                        loader.style.display = "none";
+                    }, 8000);
+                });
             });
         });
-
-        // ➤ Pour les boutons avec data-loader (ex. suppression AJAX)
-        document.querySelectorAll('[data-loader]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                loader.style.display = "flex";
-
-                // Cache aussi après un petit délai
-                setTimeout(() => {
-                    loader.style.display = "none";
-                }, 8000);
-            });
-        });
-    });
-</script> --}}
+    </script> --}}
 
 </body>
 

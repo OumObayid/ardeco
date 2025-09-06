@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Category;
 use App\Models\User;
 use App\Observers\UserObserver;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
 
@@ -28,5 +29,6 @@ class AppServiceProvider extends ServiceProvider
         View::composer('*', function ($view) {
             $view->with('categories', Category::all());
         });
+         Paginator::useBootstrapFive();
     }
 }

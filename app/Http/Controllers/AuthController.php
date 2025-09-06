@@ -19,7 +19,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Affiche le formulaire d'inscription.
+     * Affiche le formulaire d'inscription publique.
      */
     public function showRegisterForm()
     {
@@ -27,7 +27,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Traitement de l'inscription.
+     * Traitement de l'inscription publique.
      */
     public function register(Request $request)
     {
@@ -35,7 +35,7 @@ class AuthController extends Controller
             'firstname' => 'required|string|max:255',
             'lastname'  => 'required|string|max:255',
             'email'     => 'required|email|unique:users',
-            'password'  => 'required|string|min:6',
+            'password'  => 'required|string|min:6|confirmed',
         ]);
 
         $user = User::create([
@@ -43,6 +43,7 @@ class AuthController extends Controller
             'lastname'  => $request->lastname,
             'email'     => $request->email,
             'password'  => Hash::make($request->password),
+            'role'      => 'user', // rôle par défaut pour inscription publique
         ]);
 
         if ($request->expectsJson()) {
@@ -62,6 +63,9 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
+        // Optionnel : limiter les tentatives pour éviter le brute force
+        // $this->validateLoginAttempts($request);
+
         if (!Auth::attempt($credentials)) {
             return $request->expectsJson()
                 ? response()->json(['message' => 'Identifiants incorrects'], 401)
@@ -72,10 +76,13 @@ class AuthController extends Controller
 
         if ($request->expectsJson()) {
             $token = $user->createToken('authToken')->plainTextToken;
-            return response()->json(['token' => $token]);
+            return response()->json([
+                'token' => $token,
+                'user'  => $user,
+            ]);
         }
 
-        return redirect()->route($user->role === 'admin' ? 'admin.dashboard' : 'dashboard');
+        return redirect()->route($user->role === 'admin' ? 'admin.dashboard' : 'home');
     }
 
     /**
@@ -93,11 +100,21 @@ class AuthController extends Controller
     }
 
     /**
-     * Création d’un utilisateur (ex: depuis le dashboard admin).
+     * Création d’un utilisateur depuis le dashboard admin.
      */
     public function store(UserRequest $request)
     {
-        User::create($request->validated());
+        $data = $request->validated();
+
+        // Hash du mot de passe
+        $data['password'] = Hash::make($data['password']);
+
+        // Si rôle non défini, par défaut user
+        if (!isset($data['role'])) {
+            $data['role'] = 'user';
+        }
+
+        User::create($data);
 
         return redirect()->back()->with('success', 'Utilisateur créé avec succès');
     }
@@ -109,4 +126,12 @@ class AuthController extends Controller
     {
         return response()->json(Auth::user());
     }
+
+    /**
+     * Limitation optionnelle des tentatives de connexion.
+     */
+    // protected function validateLoginAttempts(Request $request)
+    // {
+    //     $this->middleware('throttle:5,1'); // max 5 tentatives / 1 minute
+    // }
 }

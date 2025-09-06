@@ -5,123 +5,136 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
     /**
-     * 📌 Afficher tous les produits (accessible à tous)
+     * Page d'accueil : afficher les produits paginés (accessible à tous)
      */
-
     public function home()
     {
-        $products = Product::with('category')->get();
+        $products = Product::with('category')->latest()->paginate(12);
+        $categories = Category::all();
 
-        return view('home', compact('products'));
+        return view('home', compact('products', 'categories'));
+    }
+
+    /**
+     * Afficher un produit via slug (accessible à tous)
+     */
+    public function show(Product $product)
+    {
+        $product->load('category', 'images');
+
+        // 🔹 Produits similaires (même catégorie, exclure le produit courant)
+        $relatedProducts = Product::where('categorie_id', $product->categorie_id)
+            ->where('id', '!=', $product->id)
+            ->take(10)
+            ->get();
+
+        return view('products.show', compact('product', 'relatedProducts'));
     }
 
 
-    // Affichage des produits (Admin)
+    /**
+     * Liste des produits pour l'admin
+     */
     public function index()
     {
-        // $products = Product::all();
-        // $products = Product::with('category')->get();
-        $products = Product::latest()->paginate(10); // pagination
-
+        $products = Product::latest()->paginate(10);
         return view('admin.products.index', compact('products'));
     }
 
-
     /**
-     * 📌 Afficher un produit par son ID (accessible à tous)
+     * Formulaire de création d'un produit (Admin)
      */
-    public function show($id)
-    {
-        // $product = Product::find($id);
-
-        // if (!$product) {
-        //     return response()->json(['message' => 'Produit non trouvé'], 404);
-        // }
-        $product = Product::with('category')->find($id);
-
-        if (!$product) {
-            return redirect()->route('home')->with('error', 'Produit non trouvé');
-        }
-
-        return view('products.show', compact('product'));
-    }
-
-    /**
-     * 🔒 Ajouter un nouveau produit (ADMIN uniquement)
-     */
-    // Formulaire d'ajout d'un produit
     public function create()
     {
         $categories = Category::all();
-        // dd($categories); // Affiche toutes les catégories et arrête l'exécution
         return view('admin.products.create', compact('categories'));
     }
 
-
-    // Ajout d'un produit
+    /**
+     * Enregistrement d'un nouveau produit
+     */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric',
             'categorie_id' => 'nullable|exists:categories,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
             'colors' => 'nullable|string',
         ]);
 
-        // Gestion de l'image
+        // Gestion de l'image principale
         $imagePath = null;
+
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('products', 'public');
+
+            $file = $request->file('image');
+
+            if ($file->isValid()) {
+
+                // Créer le dossier si inexistant
+                $storagePath = storage_path('app/public/products');
+                if (!file_exists($storagePath)) {
+                    mkdir($storagePath, 0777, true);
+                }
+
+                // Stocker le fichier
+                $imagePath = $file->store('products', 'public');
+
+                // Vérification
+                if (!file_exists(storage_path('app/public/' . $imagePath))) {
+                    dd("Erreur : le fichier n'a pas été stocké.", $imagePath, $storagePath);
+                }
+            } else {
+                dd("Erreur : fichier invalide", $file);
+            }
         }
 
+        // Création du produit
         $product = Product::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-            'categorie_id' => $request->categorie_id,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'price' => $validated['price'],
+            'categorie_id' => $validated['categorie_id'] ?? null,
             'image' => $imagePath,
-            'colors' => $request->colors
-                ? array_map('trim', explode(',', $request->colors))
-                : null,
+            'colors' => isset($validated['colors']) ? array_map('trim', explode(',', $validated['colors'])) : null,
         ]);
 
+        // Galerie d'images
         if ($request->hasFile('gallery_images')) {
             foreach ($request->file('gallery_images') as $file) {
-                $galleryPath = $file->store('products/gallery', 'public');
-
-                $product->images()->create([
-                    'image_path' => $galleryPath,
-                ]);
+                if ($file->isValid()) {
+                    $galleryPath = $file->store('products/gallery', 'public');
+                    $product->images()->create([
+                        'image_path' => $galleryPath,
+                    ]);
+                }
             }
         }
 
         return redirect()->route('admin.products.index')->with('success', 'Produit ajouté avec succès.');
     }
-    /**
-     * 🔒 Mettre à jour un produit (ADMIN uniquement)
-     */
 
+    /**
+     * Formulaire d'édition d'un produit
+     */
     public function edit($id)
     {
-        $product = Product::find($id);
-
-        if (!$product) {
-            return redirect()->route('admin.products.index')->with('error', 'Produit non trouvé');
-        }
-
-        $categories = Category::all(); // Pour la sélection des catégories
+        $product = Product::findOrFail($id);
+        $categories = Category::all();
         return view('admin.products.edit', compact('product', 'categories'));
     }
-    // Mise à jour d'un produit
+
+    /**
+     * Mise à jour d'un produit
+     */
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
@@ -131,47 +144,49 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric',
             'categorie_id' => 'nullable|exists:categories,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'colors' => 'nullable|string',
         ]);
-        $colors = $validated['colors']
-            ? array_map('trim', explode(',', $validated['colors']))
-            : null;
 
-        // Gestion de l'image
+        // Gestion de l'image principale
         if ($request->hasFile('image')) {
-            // Supprimer l'ancienne image si elle existe
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
+            $file = $request->file('image');
+            if ($file->isValid()) {
+                // Supprimer l'ancienne image
+                if ($product->image) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $product->image = $file->store('products', 'public');
             }
-
-            $product->image = $request->file('image')->store('products', 'public');
         }
 
-        // Mise à jour des données
         $product->update([
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-            'categorie_id' => $request->categorie_id,
-            'colors' => $colors,
-            'image' => $product->image,  // assigne la nouvelle image si uploadée
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'price' => $validated['price'],
+            'categorie_id' => $validated['categorie_id'] ?? null,
+            'colors' => isset($validated['colors']) ? array_map('trim', explode(',', $validated['colors'])) : null,
+            'image' => $product->image,
         ]);
 
-        // Enregistrement des nouvelles images de la galerie
+        // Ajout nouvelles images de galerie
         if ($request->hasFile('gallery_images')) {
             foreach ($request->file('gallery_images') as $file) {
-                $galleryPath = $file->store('products/gallery', 'public');
-
-                $product->images()->create([
-                    'image_path' => $galleryPath,
-                ]);
+                if ($file->isValid()) {
+                    $galleryPath = $file->store('products/gallery', 'public');
+                    $product->images()->create([
+                        'image_path' => $galleryPath,
+                    ]);
+                }
             }
         }
-
 
         return redirect()->route('admin.products.index')->with('success', 'Produit mis à jour avec succès.');
     }
+
+    /**
+     * Supprimer une image de galerie
+     */
     public function deleteImage($id)
     {
         $image = ProductImage::findOrFail($id);
@@ -182,26 +197,21 @@ class ProductController extends Controller
     }
 
     /**
-     * 🔒 Supprimer un produit (ADMIN uniquement)
+     * Supprimer un produit
      */
     public function destroy($id)
     {
-        // $this->authorize('admin'); // Vérifie que l'utilisateur est admin
-
         $product = Product::findOrFail($id);
         $this->authorize('delete', $product);
 
-        if (!$product) {
-            return response()->json(['message' => 'Produit non trouvé'], 404);
-        }
-
-        // Suppression de l'image associée
         if ($product->image) {
             Storage::disk('public')->delete($product->image);
         }
 
         $product->delete();
 
-        return redirect()->route('admin.products.index')->with('success', 'Produit supprimé avec succès');
+        return redirect()->route('admin.products.index')->with('success', 'Produit supprimé avec succès.');
     }
+
+
 }

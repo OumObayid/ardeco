@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <title>Nouvelle commande reçue</title>
@@ -16,7 +17,7 @@
             background-color: #fff;
             margin: auto;
             border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -57,6 +58,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -67,6 +69,7 @@
 
             <p><strong>Produit :</strong> {{ $product->name }}</p>
             <p><strong>Prix :</strong> {{ number_format($product->price, 2, ',', ' ') }} DH</p>
+            <p><strong>Quantité :</strong> {{ $order->quantity }}</p>
 
             <h2>Informations du client</h2>
             <p><strong>Nom :</strong> {{ $order->name }}</p>
@@ -79,4 +82,5 @@
         </div>
     </div>
 </body>
+
 </html>

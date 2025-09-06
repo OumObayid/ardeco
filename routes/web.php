@@ -1,72 +1,130 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NewOrderNotification;
+use App\Models\Order;
+use App\Models\Product;
 
-
-// 🔹 Page d'accueil accessible à tous
-// Route::get('/', function () {
-//     return view('welcome');
-// })->name('home');
-
+/*
+|-------------------------------------------------------------------------- 
+| Routes publiques
+|-------------------------------------------------------------------------- 
+*/
 Route::get('/', [ProductController::class, 'home'])->name('home');
-Route::get('/details', [ProductController::class, 'show'])->name('show');
-Route::get('/produit/{id}', [ProductController::class, 'show'])->name('products.show');
+
+// Produit via ID
+Route::get('/produit/{product}', [ProductController::class, 'show'])->name('products.show');
+
+// Catégorie via ID
+Route::get('/categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+
+// Commande
 Route::post('/commande', [OrderController::class, 'submit'])->name('order.submit');
-Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('category.show');
 
+// Route test email NewOrderNotification
+Route::get('/send-new-order-email', function () {
 
+    $order = Order::first();       // Exemple : première commande
+    $product = Product::first();   // Exemple : premier produit
 
-// 🔹 Authentification
-Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
-Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
+    if (!$order || !$product) {
+        return "Aucune commande ou produit trouvé pour le test !";
+    }
+
+    Mail::to('destinataire@exemple.com')->send(new NewOrderNotification($order, $product));
+
+    return "Email Nouvelle Commande envoyé avec succès ✅";
+});
+
+// Authentification pour les invités
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+});
+
+// Déconnexion
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
+/*
+|-------------------------------------------------------------------------- 
+| Routes Admin
+|-------------------------------------------------------------------------- 
+*/
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'adminDashboard'])->name('dashboard');
 
-// 🔹 Dashboard (auth obligatoire)
-Route::middleware('auth')->group(function () {
+    // Profil admin
+    Route::get('/profile', [UserController::class, 'editProfile'])->name('profile.index');
+    Route::post('/profile', [UserController::class, 'updateProfile'])->name('profile.update');
 
-    Route::middleware(['admin'])->prefix('admin')->group(function () {
-        // 🔹 Routes pour l'Admin (auth + admin obligatoire)
-        Route::get('/dashboard', [DashboardController::class, 'adminDashboard'])->name('admin.dashboard');
-        //Profile
-        Route::get('/admin/profile', [UserController::class, 'editProfile'])->name('admin.profile.index');
-        Route::post('/admin/profile', [UserController::class, 'updateProfile'])->name('admin.profile.update');
+    /*
+    |-----------------------------
+    | Produits
+    |-----------------------------
+    */
+    Route::prefix('products')->name('products.')->group(function () {
+        Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/create', [ProductController::class, 'create'])->name('create');
+        Route::post('/', [ProductController::class, 'store'])->name('store');
+        Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
+        Route::put('/{product}', [ProductController::class, 'update'])->name('update');
+        Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
 
-
-        // Gestion des produits
-        Route::get('/products', [ProductController::class, 'index'])->name('admin.products.index');
-        Route::get('/products/create', [ProductController::class, 'create'])->name('admin.products.create');
-        Route::post('/products', [ProductController::class, 'store'])->name('admin.products.store');
-        Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('admin.products.edit');
-        Route::put('/products/{id}', [ProductController::class, 'update'])->name('admin.products.update');
-        Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
-        Route::delete('/admin/products/images/{id}', [ProductController::class, 'deleteImage'])->name('admin.products.deleteImage');
-
-
-        // Gestion des catégories
-        Route::get('/categories', [CategoryController::class, 'index'])->name('admin.categories.index');
-        Route::get('/categories/create', [CategoryController::class, 'create'])->name('admin.categories.create');
-        Route::post('/categories', [CategoryController::class, 'store'])->name('admin.categories.store');
-        Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('admin.categories.edit');
-        Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('admin.categories.update');
-        Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('admin.categories.destroy');
-
-        // Gestion des commandes
-        Route::get('/orders', [OrderController::class, 'index'])->name('admin.orders.index');
-        Route::get('/orders/{id}', [OrderController::class, 'show'])->name('admin.orders.show');
-        Route::delete('/orders/{id}', [OrderController::class, 'destroy'])->name('admin.orders.destroy');
-
-        // Gestion des utilisateurs
-        Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
-        Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+        // Suppression image
+        Route::delete('/images/{image}', [ProductController::class, 'deleteImage'])->name('deleteImage');
     });
+
+    /*
+    |-----------------------------
+    | Catégories
+    |-----------------------------
+    */
+    Route::prefix('categories')->name('categories.')->group(function () {
+        Route::get('/', [CategoryController::class, 'index'])->name('index');
+        Route::get('/create', [CategoryController::class, 'create'])->name('create');
+        Route::post('/', [CategoryController::class, 'store'])->name('store');
+        Route::get('/{category}/edit', [CategoryController::class, 'edit'])->name('edit');
+        Route::put('/{category}', [CategoryController::class, 'update'])->name('update');
+        Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('destroy');
+    });
+
+    /*
+    |-----------------------------
+    | Commandes
+    |-----------------------------
+    */
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [OrderController::class, 'index'])->name('index');
+        Route::get('/{order}', [OrderController::class, 'show'])->name('show');
+        Route::delete('/{order}', [OrderController::class, 'destroy'])->name('destroy');
+
+        // Route pour mettre à jour le status d'une commande
+        Route::patch('/{order}/status', [OrderController::class, 'updateStatus'])->name('updateStatus');
+    });
+
+    /*
+    |-----------------------------
+    | Utilisateurs
+    |-----------------------------
+    */
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/', [UserController::class, 'index'])->name('index');
+        Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+
+        // Mise à jour du rôle
+        Route::patch('/{user}/role', [UserController::class, 'updateRole'])->name('updateRole');
+    });
+
 });

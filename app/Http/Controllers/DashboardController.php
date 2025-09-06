@@ -6,31 +6,46 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class DashboardController extends Controller
 {
-    // Afficher le tableau de bord utilisateur
+    /**
+     * Affiche le tableau de bord pour un utilisateur simple.
+     */
     public function userDashboard()
     {
         return view('user.dashboard');
     }
 
-    // Afficher le tableau de bord administrateur
+    /**
+     * Affiche le tableau de bord pour l'administrateur.
+     */
     public function adminDashboard()
     {
-        //  return view('admin.dashboard');
-
+        // Vérifie si l'utilisateur a le droit d'accès admin
         if (!Gate::allows('access-admin')) {
-            abort(403, "Accès refusé"); // Bloquer l'accès si ce n'est pas un admin
+            abort(403, 'Accès refusé');
         }
-        $productCount = Product::count();
-        $categoryCount = Category::count();
-        $orderCount = Order::count(); // si tu gères les commandes
-        $userCount = User::Count();
-        $latestOrders = Order::with('product')->latest()->take(5)->get();
 
-        return view('admin.dashboard', compact('productCount', 'categoryCount', 'orderCount', 'userCount','latestOrders'));
+        // Comptages pour le dashboard
+        $productCount   = Product::count();
+        $categoryCount  = Category::count();
+        $orderCount     = Order::count();
+        $userCount      = User::count();
+
+        // Dernières commandes avec relation product
+        $latestOrders = Order::with('product')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('admin.dashboard', compact(
+            'productCount',
+            'categoryCount',
+            'orderCount',
+            'userCount',
+            'latestOrders'
+        ));
     }
 }
